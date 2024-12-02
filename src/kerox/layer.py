@@ -23,13 +23,20 @@ class Layer:
     @property
     def eager_forward_function(
         self,
-    ) -> Callable[[Unpack[tuple[spox.Var, ...]]], spox.Var]:
+    ) -> Callable[[Unpack[tuple[SupportsSpoxVar, ...]]], ndonnx.Array]:
         if self._eager_forward_function is not None:
             return self._eager_forward_function
 
         from ndonnx._propagation import eager_propagate
 
-        self._eager_forward_function = eager_propagate(self.forward)
+        @eager_propagate
+        def eager_forward_function(
+            *inputs: Unpack[tuple[SupportsSpoxVar, ...]],
+        ) -> ndonnx.Array:
+            result = self.forward(*inputs)
+            return ndonnx.from_spox_var(result)
+
+        self._eager_forward_function = eager_forward_function
         return self._eager_forward_function
 
     def forward(self, *inputs: Unpack[tuple[SupportsSpoxVar, ...]]) -> spox.Var:
@@ -54,4 +61,6 @@ class Layer:
             inputs = inputs.value
         else:
             inputs = ndonnx.asarray(inputs)
-        return EagerTensor(spox_var=self.eager_forward_function(inputs))
+
+        result = self.eager_forward_function(inputs)
+        return EagerTensor(spox_var=result.spox_var())
