@@ -16,6 +16,7 @@ class Layer:
         register_object(self, self._name)
         self._source_layers = None
         self._eager_forward_function = None
+        self._last_inputs = self._last_outputs = None
 
     @property
     def built(self) -> bool:
@@ -46,22 +47,25 @@ class Layer:
     def __call__(
         self, inputs: SupportsSpoxVar | ArrayLike
     ) -> SymbolicTensor | EagerTensor:
+        self._last_inputs = inputs
         # Called with SymbolicTensor: set source layer and return SymbolicTensor
         if isinstance(inputs, SymbolicTensor):
             self._source_layers = [inputs.source_layer]
             result = self.forward(inputs)
-            return SymbolicTensor(
+            self._last_outputs = SymbolicTensor(
                 spox_var=result,
                 shape=result.unwrap_tensor().shape,
                 dtype=result.unwrap_tensor().dtype,
                 source_layer=self._name,
             )
+            return self._last_outputs
 
-        # Called with EagerTensor or convetable to ndonnx.Array: return EagerTensor
+        # Called with EagerTensor or convertable to ndonnx.Array: return EagerTensor
         if isinstance(inputs, EagerTensor):
             inputs = inputs.value
         else:
             inputs = ndonnx.asarray(inputs)
 
         result = self.eager_forward_function(inputs)
-        return EagerTensor(spox_var=result.spox_var())
+        self._last_outputs = EagerTensor(result, eager_source=inputs)
+        return self._last_outputs

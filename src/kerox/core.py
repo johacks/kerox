@@ -122,12 +122,20 @@ class SymbolicTensor(SupportsSpoxVar):
 
 
 class EagerTensor(SymbolicTensor):
-    def __init__(self, spox_var):
-        super().__init__(spox_var=spox_var)
+    def __init__(self, array: ndonnx.Array, eager_source: SupportsSpoxVar) -> None:
+        super().__init__(spox_var=array.spox_var())
+        self._eager_source = eager_source
+        self._array = array
+
+    @property
+    def eager_source(self) -> SupportsSpoxVar:
+        return self._eager_source
 
     @property
     def value(self) -> ndonnx.Array:
-        return ndonnx.from_spox_var(self.spox_var())
+        return self._array.to_numpy()
 
     def __repr__(self) -> str:
-        return f"EagerTensor(shape={self.shape}, dtype={self.dtype}): {self.value}"
+        value_str = "\n" + str(self.value)
+        value_str = value_str.replace("\n", "\n" + " " * 4)
+        return f"EagerTensor(shape={self.shape}, dtype={self.dtype}): {value_str}"
