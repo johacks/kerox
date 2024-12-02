@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence
 
 import ndonnx
 import numpy as np
@@ -122,20 +122,31 @@ class SymbolicTensor(SupportsSpoxVar):
 
 
 class EagerTensor(SymbolicTensor):
-    def __init__(self, array: ndonnx.Array, eager_source: SupportsSpoxVar) -> None:
+    def __init__(
+        self,
+        array: ndonnx.Array,
+        eager_source: SupportsSpoxVar
+        | Sequence[SupportsSpoxVar]
+        | dict[str, SupportsSpoxVar],
+    ) -> None:
         super().__init__(spox_var=array.spox_var())
         self._eager_source = eager_source
         self._array = array
 
     @property
-    def eager_source(self) -> SupportsSpoxVar:
+    def eager_source(
+        self,
+    ) -> SupportsSpoxVar | Sequence[SupportsSpoxVar] | dict[str, SupportsSpoxVar]:
         return self._eager_source
 
     @property
     def value(self) -> ndonnx.Array:
+        return self._array
+
+    def numpy(self) -> NDArray:
         return self._array.to_numpy()
 
     def __repr__(self) -> str:
-        value_str = "\n" + str(self.value)
+        value_str = "\n" + str(self.numpy())
         value_str = value_str.replace("\n", "\n" + " " * 4)
         return f"EagerTensor(shape={self.shape}, dtype={self.dtype}): {value_str}"
