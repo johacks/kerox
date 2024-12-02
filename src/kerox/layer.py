@@ -5,8 +5,9 @@ import spox
 from numpy.typing import ArrayLike
 from typing_extensions import Unpack
 
-from kerox.core import EagerTensor, SupportsSpoxVar, SymbolicTensor
+from kerox.core import EagerTensor, SymbolicTensor
 from kerox.namespace import register_object, to_unique
+from kerox.typing import SupportsSpoxVar
 
 
 class Layer:

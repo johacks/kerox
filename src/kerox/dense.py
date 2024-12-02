@@ -3,8 +3,9 @@ from typing import Optional
 import spox
 import spox.opset.ai.onnx.v21 as op
 
-from kerox.core import Activation, Initializer, Parameter
-from kerox.layer import Layer, SupportsSpoxVar
+from kerox.core import Parameter
+from kerox.layer import Layer
+from kerox.typing import Activation, Initializer, SupportsSpoxVar
 
 
 class Dense(Layer):

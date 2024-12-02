@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Protocol, Sequence, SupportsIndex, TypeAlias
+from typing import Optional
 
 import ndonnx
 import numpy as np
@@ -7,14 +7,7 @@ import spox._future
 from numpy.typing import ArrayLike, DTypeLike, NDArray
 
 from kerox.namespace import to_unique
-
-ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
-Initializer: TypeAlias = Callable[[ShapeLike, DTypeLike], ArrayLike] | ArrayLike
-Activation: TypeAlias = Callable[[spox.Var], spox.Var]
-
-
-class SupportsSpoxVar(Protocol):
-    def spox_var(self) -> spox.Var: ...
+from kerox.typing import Initializer, ShapeLike, SupportsSpoxVar
 
 
 def default_initializer(shape: ShapeLike, dtype: DTypeLike) -> ArrayLike:
