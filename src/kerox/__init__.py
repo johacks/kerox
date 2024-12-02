@@ -1,2 +1,5 @@
-def hello() -> str:
-    return "Hello from kerox!"
+from kerox.__about__ import __version__
+
+
+def version() -> str:
+    return __version__
