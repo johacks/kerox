@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Optional
 
 import ndonnx
 import spox
@@ -21,6 +22,14 @@ class Layer:
     @property
     def built(self) -> bool:
         return True
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def source_layers(self) -> Optional[list[str]]:
+        return self._source_layers
 
     @property
     def eager_forward_function(
