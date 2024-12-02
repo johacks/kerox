@@ -9,8 +9,25 @@ authors = [
 requires-python = ">=3.10,<3.12"
 dependencies = [
     "ndonnx>=0.9.3",
+    "onnxruntime>=1.20.1",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+# Adds isort and docstring linting
+extend-select = ["I"]
+# Ignore bothersome warnings
+extend-ignore = ["E402"]
+# Don't autoremove unused imports, variable, etc.
+unfixable = ["F401"]
+# A file or directory to exclude from linting
+exclude = ["scratchpad.py"]
