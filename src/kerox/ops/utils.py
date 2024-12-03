@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Sequence
+from typing import Callable, Sequence
 
 import ndonnx
 import numpy as np
@@ -24,7 +24,7 @@ def many_to_spox_var(*xs: ArrayOrTensor) -> Sequence[spox.Var]:
     return tuple(to_spox_var(x) for x in xs)
 
 
-def direct_conversion(keras_func, spox_func):
+def spox_auto_adapt_op(keras_func: Callable, spox_func: Callable) -> Callable:
     def inner_wrapper(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

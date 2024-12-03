@@ -1,11 +1,11 @@
 from typing import Callable
 
-import keras
 import spox
 from keras import activations, saving
 
 from kerox.core import KeroxTensor, in_onnx_build_scope
-from kerox.ops import kops, sops, to_spox_var
+from kerox.ops.utils import kops, sops, spox_auto_adapt_op, to_spox_var
+from kerox.typing import ArrayOrTensor
 
 
 def spox_constant_like(spox_var: spox.Var, value):
@@ -14,35 +14,27 @@ def spox_constant_like(spox_var: spox.Var, value):
 
 
 @saving.register_keras_serializable(package="kerox")
-def relu(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.relu(to_spox_var(x)))
-    return kops.relu(x)
+@spox_auto_adapt_op(kops.relu, sops.relu)
+def relu(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def sigmoid(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.sigmoid(to_spox_var(x)))
-    return kops.sigmoid(x)
+@spox_auto_adapt_op(kops.sigmoid, sops.sigmoid)
+def sigmoid(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def tanh(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.tanh(to_spox_var(x)))
-    return kops.tanh(x)
+@spox_auto_adapt_op(kops.tanh, sops.tanh)
+def tanh(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def softmax(x, axis=-1):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.softmax(to_spox_var(x), axis=axis))
-    return kops.softmax(x, axis=axis)
+@spox_auto_adapt_op(kops.softmax, sops.softmax)
+def softmax(x: ArrayOrTensor, *, axis=-1) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def relu6(x):
+def relu6(x: ArrayOrTensor) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
         zero, six = spox_constant_like(x, 0), spox_constant_like(x, 6)
@@ -51,25 +43,20 @@ def relu6(x):
 
 
 @saving.register_keras_serializable(package="kerox")
-def leaky_relu(x, negative_slope=0.3):
+def leaky_relu(x: ArrayOrTensor, *, negative_slope=0.3) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
-        alpha = spox_constant_like(x, negative_slope)
-        return KeroxTensor(spox_var=sops.leaky_relu(x, alpha=alpha))
+        return KeroxTensor(spox_var=sops.leaky_relu(x, alpha=negative_slope))
     return kops.leaky_relu(x, negative_slope=negative_slope)
 
 
 @saving.register_keras_serializable(package="kerox")
-def elu(x, alpha=1.0):
-    if in_onnx_build_scope():
-        x = to_spox_var(x)
-        alpha = spox_constant_like(x, alpha)
-        return KeroxTensor(spox_var=sops.elu(x, alpha=alpha))
-    return kops.elu(x, alpha=alpha)
+@spox_auto_adapt_op(kops.elu, sops.elu)
+def elu(x: ArrayOrTensor, *, alpha=1.0) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def silu(x):
+def silu(x: ArrayOrTensor) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
         return KeroxTensor(spox_var=sops.mul(x, sops.sigmoid(x)))
@@ -77,33 +64,27 @@ def silu(x):
 
 
 @saving.register_keras_serializable(package="kerox")
-def hard_silu(x):
-    if in_onnx_build_scope():
-        x = to_spox_var(x)
-        return KeroxTensor(spox_var=sops.hard_swish(x))
-    return kops.hard_silu(x)
+@spox_auto_adapt_op(kops.hard_silu, sops.hard_swish)
+def hard_silu(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def swish(x):
+def swish(x: ArrayOrTensor) -> ArrayOrTensor:
     return silu(x)
 
 
 @saving.register_keras_serializable(package="kerox")
-def hard_swish(x):
+def hard_swish(x: ArrayOrTensor) -> ArrayOrTensor:
     return hard_silu(x)
 
 
 @saving.register_keras_serializable(package="kerox")
-def celu(x, alpha=1.0):
-    if in_onnx_build_scope():
-        x = to_spox_var(x)
-        return KeroxTensor(spox_var=sops.celu(x, alpha=spox_constant_like(x, alpha)))
-    return kops.celu(x, alpha=alpha)
+@spox_auto_adapt_op(kops.celu, sops.celu)
+def celu(x: ArrayOrTensor, *, alpha=1.0) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def soft_shrink(x, threshold=0.5):
+def soft_shrink(x: ArrayOrTensor, threshold=0.5) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
         plus_threshold = spox_constant_like(x, threshold)
@@ -121,28 +102,22 @@ def soft_shrink(x, threshold=0.5):
 
 
 @saving.register_keras_serializable(package="kerox")
-def selu(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.selu(to_spox_var(x)))
-    return kops.selu(x)
+@spox_auto_adapt_op(kops.selu, sops.selu)
+def selu(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def softplus(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.softplus(to_spox_var(x)))
-    return kops.softplus(x)
+@spox_auto_adapt_op(kops.softplus, sops.softplus)
+def softplus(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def softsign(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.softsign(to_spox_var(x)))
-    return kops.softsign(x)
+@spox_auto_adapt_op(kops.softsign, sops.softsign)
+def softsign(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def squareplus(x, b=4):
+def squareplus(x: ArrayOrTensor, b=4) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
         b = spox_constant_like(x, b)
@@ -153,42 +128,42 @@ def squareplus(x, b=4):
 
 
 @saving.register_keras_serializable(package="kerox")
-def gelu(x):
+def gelu(x: ArrayOrTensor, *, approximate=True) -> ArrayOrTensor:
     if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.gelu(to_spox_var(x)))
-    return kops.gelu(x)
+        x = to_spox_var(x)
+        result = sops.gelu(x, approximate="tanh" if approximate else "none")
+        return KeroxTensor(spox_var=result)
+    return kops.gelu(x, approximate=approximate)
 
 
 @saving.register_keras_serializable(package="kerox")
-def glu(x):
+def glu(x: ArrayOrTensor, *, axis=-1) -> ArrayOrTensor:
     if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.glu(to_spox_var(x)))
-    return kops.glu(x)
+        x = to_spox_var(x)
+        a, b = sops.split(x, axis=axis, num_outputs=2)
+        return KeroxTensor(spox_var=sops.mul(a, sops.sigmoid(b)))
+    return kops.glu(x, axis=axis)
 
 
 @saving.register_keras_serializable(package="kerox")
-def tanh_shrink(x):
+def tanh_shrink(x: ArrayOrTensor) -> ArrayOrTensor:
     if in_onnx_build_scope():
         return KeroxTensor(spox_var=sops.mul(to_spox_var(x), sops.tanh(to_spox_var(x))))
     return kops.tanh_shrink(x)
 
 
 @saving.register_keras_serializable(package="kerox")
-def exponential(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.exp(to_spox_var(x)))
-    return kops.exp(x)
+@spox_auto_adapt_op(kops.exponential, sops.exp)
+def exponential(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def hard_sigmoid(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.hard_sigmoid(to_spox_var(x)))
-    return kops.hard_sigmoid(x)
+@spox_auto_adapt_op(kops.hard_sigmoid, sops.hard_sigmoid)
+def hard_sigmoid(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def hard_tanh(x):
+def hard_tanh(x: ArrayOrTensor) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
         minus_one, one = spox_constant_like(x, -1), spox_constant_like(x, 1)
@@ -197,7 +172,7 @@ def hard_tanh(x):
 
 
 @saving.register_keras_serializable(package="kerox")
-def hard_shrink(x, threshold=0.5):
+def hard_shrink(x: ArrayOrTensor, threshold=0.5) -> ArrayOrTensor:
     if in_onnx_build_scope():
         x = to_spox_var(x)
         threshold = spox_constant_like(x, threshold)
@@ -209,28 +184,22 @@ def hard_shrink(x, threshold=0.5):
 
 
 @saving.register_keras_serializable(package="kerox")
-def linear(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.identity(to_spox_var(x)))
-    return x
+@spox_auto_adapt_op(kops.identity, sops.identity)
+def linear(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def mish(x):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.mish(to_spox_var(x)))
-    return keras.activations.mish(x)
+@spox_auto_adapt_op(activations.mish, sops.mish)
+def mish(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def log_softmax(x, axis=-1):
-    if in_onnx_build_scope():
-        return KeroxTensor(spox_var=sops.log_softmax(to_spox_var(x), axis=axis))
-    return kops.log_softmax(x, axis=axis)
+@spox_auto_adapt_op(kops.log_softmax, sops.log_softmax)
+def log_softmax(x: ArrayOrTensor, *, axis=-1) -> ArrayOrTensor: ...
 
 
 @saving.register_keras_serializable(package="kerox")
-def log_sigmoid(x):
+def log_sigmoid(x: ArrayOrTensor) -> ArrayOrTensor:
     if in_onnx_build_scope():
         return KeroxTensor(spox_var=sops.log(sops.sigmoid(to_spox_var(x))))
     return kops.log_sigmoid(x)
