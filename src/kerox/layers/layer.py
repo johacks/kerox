@@ -1,28 +1,15 @@
 from abc import ABC
-from typing import Optional
+from functools import wraps
 
-from keras import constraints, initializers, regularizers, utils
 from keras import layers as klayers
-from keras.src import backend
 from optree import PyTree
 
 from kerox.core import KeroxTensor, KeroxVariable, ONNXBuildScope, in_onnx_build_scope
-from kerox.typing import ArrayOrTensor, ShapeLike
 
 
 class Layer(klayers.Layer, ABC):
-    def add_weight(
-        self,
-        shape: Optional[ShapeLike] = None,
-        initializer=None,
-        dtype=None,
-        trainable=True,
-        autocast=True,
-        regularizer=None,
-        constraint=None,
-        aggregation="mean",
-        name=None,
-    ):
+    @wraps(klayers.Layer.add_weight)
+    def add_weight(self, *args, **kwargs):
         """Add a weight variable to the layer.
 
         Args:
@@ -53,47 +40,27 @@ class Layer(klayers.Layer, ABC):
                 when writing custom data parallel training loops.
             name: String name of the variable. Useful for debugging purposes.
         """
-        self._check_super_called()
-        if shape is None:
-            shape = ()
-        if dtype is not None:
-            dtype = utils.standardize_dtype(dtype)
-        else:
-            dtype = self.variable_dtype
-        if initializer is None:
-            if "float" in dtype:
-                initializer = "glorot_uniform"
-            else:
-                initializer = "zeros"
-        initializer = initializers.get(initializer)
-        with backend.name_scope(self.name, caller=self):
-            variable = KeroxVariable(
-                initializer=initializer,
-                shape=shape,
-                dtype=dtype,
-                trainable=trainable,
-                autocast=autocast,
-                aggregation=aggregation,
-                name=name,
-            )
-        # Will be added to layer.losses
-        variable.regularizer = regularizers.get(regularizer)
-        variable.constraint = constraints.get(constraint)
-        self._track_variable(variable)
-        return variable
+        import keras.src.layers.layer as _parent_module
 
-    def __call__(self, *args, **kwargs) -> PyTree[ArrayOrTensor]:
-        if not in_onnx_build_scope():
-            return super().__call__(*args, **kwargs)
-        # Check if we are building in ONNX scope
-        all_symbolic = all(isinstance(arg, KeroxTensor) for arg in args)
-        any_symbolic = any(isinstance(arg, KeroxTensor) for arg in args)
-        if any_symbolic and not all_symbolic:
-            raise ValueError(
-                "All inputs must be symbolic tensors or none of them. "
-                f"Got args: {args} at {self.name}"
-            )
-        return self.call(*args, **kwargs)
+        # Patch the backend Variable to be KeroxVariable for the duration of the call
+        Variable = _parent_module.backend.Variable
+        _parent_module.backend.Variable = KeroxVariable
+        try:
+            result = super().add_weight(*args, **kwargs)
+        finally:
+            _parent_module.backend.Variable = Variable
+        return result
+
+    def symbolic_call(self, *args, **kwargs):
+        # Whenever building the ONNX model, we want to call the layer's `call` method
+        if in_onnx_build_scope():
+            if all(isinstance(arg, KeroxTensor) for arg in args):
+                return self.call(*args, **kwargs)
+            else:
+                raise ValueError(
+                    f"Expected all arguments to be KeroxTensor when in ONNX build scope, but got {args}"
+                )
+        return super().symbolic_call(*args, **kwargs)
 
     def onnx_symbolic_call(self, *args: KeroxTensor, **kwargs) -> PyTree[KeroxTensor]:
         with ONNXBuildScope():

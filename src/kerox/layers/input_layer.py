@@ -11,10 +11,13 @@ class KeroxInputLayer(klayers.InputLayer, Layer):
     def __init__(self, *args, **kwargs):
         import keras.src.layers.core.input_layer as _parent_module
 
+        # Patch the backend KerasTensor to be KeroxTensor for the duration of the call
         KerasTensor = _parent_module.backend.KerasTensor
         _parent_module.backend.KerasTensor = KeroxTensor
-        super().__init__(*args, **kwargs)
-        _parent_module.backend.KerasTensor = KerasTensor
+        try:
+            super().__init__(*args, **kwargs)
+        finally:
+            _parent_module.backend.KerasTensor = KerasTensor
 
 
 @wraps(klayers.Input)

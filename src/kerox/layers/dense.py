@@ -131,11 +131,6 @@ class Dense(layer.Layer):
             x = self.activation(x)
         return x
 
-    def compute_output_shape(self, input_shape):
-        output_shape = list(input_shape)
-        output_shape[-1] = self.units
-        return tuple(output_shape)
-
     def enable_lora(self, rank, a_initializer="he_uniform", b_initializer="zeros"):
         if self.kernel_constraint:
             raise ValueError(
