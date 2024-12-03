@@ -39,6 +39,9 @@ class KeroxVariable(KerasVariable):
         var._rename(self.path)
         return var
 
+    def __repr__(self):
+        return KerasVariable.__repr__(self).replace("Variable", "KeroxVariable")
+
 
 class KeroxTensor(KerasTensor):
     def __init__(
@@ -47,6 +50,7 @@ class KeroxTensor(KerasTensor):
         dtype: DTypeLike = "float32",
         spox_var: Optional[spox.Var] = None,
         name: Optional[str] = None,
+        **kwargs,
     ):
         if spox_var is not None:
             tensor = spox_var.unwrap_tensor()
@@ -55,7 +59,7 @@ class KeroxTensor(KerasTensor):
             if shape is None:
                 raise ValueError("shape must be provided if spox_var is not.")
         self._spox_var = spox_var
-        super().__init__(shape, dtype, name=name)
+        super().__init__(shape, dtype, name=name, **kwargs)
 
     def spox_var(self) -> spox.Var:
         if self._spox_var is not None:

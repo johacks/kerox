@@ -1,16 +1,16 @@
 from typing import Callable
 
-import spox
 from keras import activations, saving
 
 from kerox.core import KeroxTensor, in_onnx_build_scope
-from kerox.ops.utils import kops, sops, spox_auto_adapt_op, to_spox_var
+from kerox.ops.utils import (
+    kops,
+    sops,
+    spox_auto_adapt_op,
+    spox_constant_like,
+    to_spox_var,
+)
 from kerox.typing import ArrayOrTensor
-
-
-def spox_constant_like(spox_var: spox.Var, value):
-    tensor = spox_var.unwrap_tensor()
-    return sops.const(value, dtype=tensor.dtype)
 
 
 @saving.register_keras_serializable(package="kerox")
@@ -184,8 +184,10 @@ def hard_shrink(x: ArrayOrTensor, threshold=0.5) -> ArrayOrTensor:
 
 
 @saving.register_keras_serializable(package="kerox")
-@spox_auto_adapt_op(kops.identity, sops.identity)
-def linear(x: ArrayOrTensor) -> ArrayOrTensor: ...
+def linear(x: ArrayOrTensor):
+    if in_onnx_build_scope():
+        return KeroxTensor(spox_var=sops.identity(to_spox_var(x)))
+    return x
 
 
 @saving.register_keras_serializable(package="kerox")
@@ -234,11 +236,13 @@ ALL_OBJECTS = {
     log_sigmoid,
 }
 NAME_TO_FUNCTION = {obj.__name__: obj for obj in ALL_OBJECTS}
+NAME_TO_FUNCTION[None] = linear
 
 
 def get(name_or_callable: str | Callable):
     if callable(name_or_callable):
         return name_or_callable
+
     if name_or_callable not in NAME_TO_FUNCTION:
         raise ValueError(f"Unknown activation function: {name_or_callable}")
     return NAME_TO_FUNCTION[name_or_callable]

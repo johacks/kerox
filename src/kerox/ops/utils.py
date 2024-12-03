@@ -36,3 +36,8 @@ def spox_auto_adapt_op(keras_func: Callable, spox_func: Callable) -> Callable:
         return wrapper
 
     return inner_wrapper
+
+
+def spox_constant_like(spox_var: spox.Var, value):
+    tensor = spox_var.unwrap_tensor()
+    return sops.const(value, dtype=tensor.dtype)

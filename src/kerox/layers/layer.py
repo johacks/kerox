@@ -83,16 +83,17 @@ class Layer(klayers.Layer, ABC):
         return variable
 
     def __call__(self, *args, **kwargs) -> PyTree[ArrayOrTensor]:
+        if not in_onnx_build_scope():
+            return super().__call__(*args, **kwargs)
         # Check if we are building in ONNX scope
         all_symbolic = all(isinstance(arg, KeroxTensor) for arg in args)
         any_symbolic = any(isinstance(arg, KeroxTensor) for arg in args)
-        if not all_symbolic and any_symbolic:
-            raise ValueError("All inputs must be KeroxTensor, or none of them.")
-        if all_symbolic:
-            if not in_onnx_build_scope():
-                raise ValueError("KeroxTensor can only be used in ONNX build scope.")
-            return self.call(*args, **kwargs)
-        return super().__call__(*args, **kwargs)
+        if any_symbolic and not all_symbolic:
+            raise ValueError(
+                "All inputs must be symbolic tensors or none of them. "
+                f"Got args: {args} at {self.name}"
+            )
+        return self.call(*args, **kwargs)
 
     def onnx_symbolic_call(self, *args: KeroxTensor, **kwargs) -> PyTree[KeroxTensor]:
         with ONNXBuildScope():
