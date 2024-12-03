@@ -1,10 +1,12 @@
+from keras import saving
 from keras.src.models import Functional as KerasFunctionalModel
 
 from kerox.core import KeroxTensor
 from kerox.layers import Layer
 
 
-class Functional(KerasFunctionalModel, Layer):
+@saving.register_keras_serializable(package="kerox")
+class KeroxFunctional(KerasFunctionalModel, Layer):
     def _standardize_inputs(self, inputs):
         if isinstance(inputs, KeroxTensor):
             return (inputs,)

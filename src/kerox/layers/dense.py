@@ -1,9 +1,10 @@
-from keras import InputSpec, constraints, initializers, regularizers
+from keras import InputSpec, constraints, initializers, regularizers, saving
 
 from kerox import activations, ops
 from kerox.layers import layer
 
 
+@saving.register_keras_serializable(package="kerox")
 class Dense(layer.Layer):
     """Just your regular densely-connected NN layer.
 

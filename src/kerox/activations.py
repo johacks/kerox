@@ -153,7 +153,7 @@ def tanh_shrink(x: ArrayOrTensor) -> ArrayOrTensor:
 
 
 @saving.register_keras_serializable(package="kerox")
-@spox_auto_adapt_op(kops.exponential, sops.exp)
+@spox_auto_adapt_op(kops.exp, sops.exp)
 def exponential(x: ArrayOrTensor) -> ArrayOrTensor: ...
 
 

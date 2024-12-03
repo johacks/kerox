@@ -1,3 +1,4 @@
+from abc import ABC
 from typing import Optional
 
 from keras import constraints, initializers, regularizers, utils
@@ -9,7 +10,7 @@ from kerox.core import KeroxTensor, KeroxVariable, ONNXBuildScope, in_onnx_build
 from kerox.typing import ArrayOrTensor, ShapeLike
 
 
-class Layer(klayers.Layer):
+class Layer(klayers.Layer, ABC):
     def add_weight(
         self,
         shape: Optional[ShapeLike] = None,
