@@ -1,152 +1,67 @@
-from typing import Optional, Sequence
+from typing import TYPE_CHECKING, Optional
 
-import ndonnx
-import numpy as np
 import spox
 import spox._future
-from numpy.typing import ArrayLike, DTypeLike, NDArray
+import spox.opset.ai.onnx.v21 as op
+from keras import KerasTensor
+from keras.src.backend.common import global_state
 
-from kerox.namespace import to_unique
-from kerox.typing import Initializer, ShapeLike, SupportsSpoxVar
+if TYPE_CHECKING:
+    from keras.src.backend.tensorflow import Variable as KerasVariable
+else:
+    from keras import Variable as KerasVariable
 
 
-def default_initializer(shape: ShapeLike, dtype: DTypeLike) -> ArrayLike:
-    return np.random.normal(size=shape).astype(dtype)
+class ONNXBuildScope:
+    def __enter__(self):
+        global_state.set_global_attribute("onnx_build", True)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        global_state.set_global_attribute("onnx_build", None)
 
 
-class Parameter(SupportsSpoxVar):
-    def __init__(
-        self,
-        name: str,
-        source_layer: Optional[str] = None,
-        shape: Optional[ShapeLike] = None,
-        dtype: Optional[DTypeLike] = None,
-        initializer: Optional[Initializer] = None,
-        trainable: bool = True,
-    ) -> None:
-        self._name = (
-            f"{source_layer}.{name}" if source_layer is not None else to_unique(name)
-        )
-        self._shape = shape
-        self._dtype = dtype
-        self._initializer = initializer
-        self._initial_value = self._get_initial_value()
-        self._spox_var = spox._future.initializer(self._initial_value)
-        self._spox_var._rename(self._name)
-        self._trainable = trainable
+def in_onnx_build_scope() -> bool:
+    return global_state.get_global_attribute("onnx_build", default=None) is not None
 
-    @property
-    def name(self) -> str:
-        return self._name
 
-    @property
-    def shape(self) -> ShapeLike:
-        return self._shape
-
-    @property
-    def dtype(self) -> DTypeLike:
-        return self._dtype
-
-    @property
-    def trainable(self) -> bool:
-        return self._trainable
-
-    @property
-    def initial_value(self) -> NDArray:
-        return self._initial_value
-
+class Variable(KerasVariable):
     def spox_var(self) -> spox.Var:
-        return self._spox_var
-
-    def _get_initial_value(self) -> NDArray:
-        def initialize(shape: ShapeLike, dtype: DTypeLike) -> ArrayLike:
-            initializer = (
-                default_initializer if self._initializer is None else self._initializer
-            )
-            if callable(initializer):
-                if shape is None or dtype is None:
-                    raise ValueError(
-                        "Shape and dtype must be set if initializer is callable."
-                    )
-                return initializer(shape, dtype)
-            return self._initializer
-
-        value = initialize(self._shape, self._dtype)
-        try:
-            return np.array(value)
-        except Exception as e:
-            raise ValueError(f"Invalid initializer: {e}")
-
-    def __repr__(self) -> str:
-        return f"Parameter(name={self._name}, shape={self._shape}, dtype={self._dtype})"
-
-
-class SymbolicTensor(SupportsSpoxVar):
-    def __init__(
-        self,
-        spox_var: Optional[spox.Var] = None,
-        shape: Optional[ShapeLike] = None,
-        dtype: Optional[DTypeLike] = None,
-        source_layer: Optional[str] = None,
-    ) -> None:
-        if not isinstance(spox_var, spox.Var):
-            if shape is None or dtype is None:
-                raise ValueError("Shape and dtype must be set if spox_var is None.")
-            self._spox_var = spox.argument(spox.Tensor(dtype=dtype, shape=shape))
+        if self.trainable:
+            # Allows training in onnxruntime for training
+            var = spox._future.initializer(value=self.numpy())
         else:
-            self._spox_var = spox_var
-        self._shape = self._spox_var.unwrap_tensor().shape
-        self._dtype = self._spox_var.unwrap_tensor().dtype
-        self._source_layer = source_layer
-
-    @property
-    def shape(self) -> ShapeLike:
-        return self._shape
-
-    @property
-    def dtype(self) -> DTypeLike:
-        return self._dtype
-
-    @property
-    def source_layer(self) -> Optional[str]:
-        return self._source_layer
-
-    def spox_var(self) -> spox.Var:
-        return self._spox_var
-
-    def __repr__(self) -> str:
-        out = f"SymbolicTensor(shape={self._shape}, dtype={self._dtype})"
-        if self._source_layer is not None:
-            out += f" from layer '{self._source_layer}'"
-        return out
+            # Don't risk using experimental feature if we are sure it's not trainable
+            var = op.constant(value=self.numpy())
+        var._rename(self.path)
+        return var
 
 
-class EagerTensor(SymbolicTensor):
+class KeroxTensor(KerasTensor):
     def __init__(
         self,
-        array: ndonnx.Array,
-        eager_source: SupportsSpoxVar
-        | Sequence[SupportsSpoxVar]
-        | dict[str, SupportsSpoxVar],
-    ) -> None:
-        super().__init__(spox_var=array.spox_var())
-        self._eager_source = eager_source
-        self._array = array
+        shape: Optional[tuple[int, ...]] = None,
+        dtype: str = "float32",
+        spox_var: Optional[spox.Var] = None,
+        name: Optional[str] = None,
+    ):
+        if spox_var is not None:
+            tensor = spox_var.unwrap_tensor()
+            shape, dtype = tensor.shape, tensor.dtype
+        else:
+            if shape is None:
+                raise ValueError("shape must be provided if spox_var is not.")
+        self._spox_var = spox_var
+        super().__init__(shape, dtype, name=name)
 
-    @property
-    def eager_source(
-        self,
-    ) -> SupportsSpoxVar | Sequence[SupportsSpoxVar] | dict[str, SupportsSpoxVar]:
-        return self._eager_source
+    def spox_var(self) -> spox.Var:
+        if self._spox_var is not None:
+            return self._spox_var
+        var = spox.argument(spox.Tensor(self.dtype, self.shape))
+        var._rename(self.name)
+        self._spox_var = var
+        return var
 
-    @property
-    def value(self) -> ndonnx.Array:
-        return self._array
-
-    def numpy(self) -> NDArray:
-        return self._array.to_numpy()
-
-    def __repr__(self) -> str:
-        value_str = "\n" + str(self.numpy())
-        value_str = value_str.replace("\n", "\n" + " " * 4)
-        return f"EagerTensor(shape={self.shape}, dtype={self.dtype}): {value_str}"
+    def __repr__(self):
+        return "<KeroxTensor: shape={}, dtype={}, name={}>".format(
+            self.shape, self.dtype, self.name
+        )
