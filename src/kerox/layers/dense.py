@@ -62,7 +62,7 @@ class Dense(layer.Layer):
 
     def __init__(
         self,
-        units,
+        units: int,
         activation=None,
         use_bias=True,
         kernel_initializer="glorot_uniform",

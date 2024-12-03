@@ -4,6 +4,8 @@ import spox
 import spox._future
 from numpy.typing import ArrayLike, DTypeLike
 
+from kerox import core
+
 ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
-Initializer: TypeAlias = Callable[[ShapeLike, DTypeLike], ArrayLike] | ArrayLike
 Activation: TypeAlias = Callable[[spox.Var], spox.Var]
+ArrayOrTensor: TypeAlias = "core.KeroxVariable" | ArrayLike | spox.Var

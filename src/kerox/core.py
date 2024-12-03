@@ -2,9 +2,11 @@ from typing import TYPE_CHECKING, Optional
 
 import spox
 import spox._future
-import spox.opset.ai.onnx.v21 as op
 from keras import KerasTensor
 from keras.src.backend.common import global_state
+
+from kerox.ops.utils import sops
+from kerox.typing import DTypeLike, ShapeLike
 
 if TYPE_CHECKING:
     from keras.src.backend.tensorflow import Variable as KerasVariable
@@ -14,24 +16,26 @@ else:
 
 class ONNXBuildScope:
     def __enter__(self):
+        self._already_in_onnx_build = in_onnx_build_scope()
         global_state.set_global_attribute("onnx_build", True)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        global_state.set_global_attribute("onnx_build", None)
+        if not self._already_in_onnx_build:
+            global_state.set_global_attribute("onnx_build", None)
 
 
 def in_onnx_build_scope() -> bool:
     return global_state.get_global_attribute("onnx_build", default=None) is not None
 
 
-class Variable(KerasVariable):
+class KeroxVariable(KerasVariable):
     def spox_var(self) -> spox.Var:
         if self.trainable:
             # Allows training in onnxruntime for training
             var = spox._future.initializer(value=self.numpy())
         else:
             # Don't risk using experimental feature if we are sure it's not trainable
-            var = op.constant(value=self.numpy())
+            var = sops.constant(value=self.numpy())
         var._rename(self.path)
         return var
 
@@ -39,8 +43,8 @@ class Variable(KerasVariable):
 class KeroxTensor(KerasTensor):
     def __init__(
         self,
-        shape: Optional[tuple[int, ...]] = None,
-        dtype: str = "float32",
+        shape: Optional[ShapeLike] = None,
+        dtype: DTypeLike = "float32",
         spox_var: Optional[spox.Var] = None,
         name: Optional[str] = None,
     ):

@@ -1,14 +1,18 @@
+from typing import Optional
+
 from keras import constraints, initializers, regularizers, utils
 from keras import layers as klayers
 from keras.src import backend
+from optree import PyTree
 
-from kerox.core import KeroxTensor, Variable, in_onnx_build_scope
+from kerox.core import KeroxTensor, KeroxVariable, ONNXBuildScope, in_onnx_build_scope
+from kerox.typing import ArrayOrTensor, ShapeLike
 
 
 class Layer(klayers.Layer):
     def add_weight(
         self,
-        shape=None,
+        shape: Optional[ShapeLike] = None,
         initializer=None,
         dtype=None,
         trainable=True,
@@ -62,7 +66,7 @@ class Layer(klayers.Layer):
                 initializer = "zeros"
         initializer = initializers.get(initializer)
         with backend.name_scope(self.name, caller=self):
-            variable = Variable(
+            variable = KeroxVariable(
                 initializer=initializer,
                 shape=shape,
                 dtype=dtype,
@@ -77,7 +81,8 @@ class Layer(klayers.Layer):
         self._track_variable(variable)
         return variable
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> PyTree[ArrayOrTensor]:
+        # Check if we are building in ONNX scope
         all_symbolic = all(isinstance(arg, KeroxTensor) for arg in args)
         any_symbolic = any(isinstance(arg, KeroxTensor) for arg in args)
         if not all_symbolic and any_symbolic:
@@ -87,3 +92,7 @@ class Layer(klayers.Layer):
                 raise ValueError("KeroxTensor can only be used in ONNX build scope.")
             return self.call(*args, **kwargs)
         return super().__call__(*args, **kwargs)
+
+    def onnx_symbolic_call(self, *args: KeroxTensor, **kwargs) -> PyTree[KeroxTensor]:
+        with ONNXBuildScope():
+            return self(*args, **kwargs)
