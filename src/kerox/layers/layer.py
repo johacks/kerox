@@ -1,6 +1,7 @@
 from abc import ABC
 from functools import wraps
 
+from keras import Operation
 from keras import layers as klayers
 from optree import PyTree
 
@@ -60,7 +61,7 @@ class Layer(klayers.Layer, ABC):
                 raise ValueError(
                     f"Expected all arguments to be KeroxTensor when in ONNX build scope, but got {args}"
                 )
-        return super().symbolic_call(*args, **kwargs)
+        return Operation.symbolic_call(self, *args, **kwargs)
 
     def onnx_symbolic_call(self, *args: KeroxTensor, **kwargs) -> PyTree[KeroxTensor]:
         with ONNXBuildScope():
