@@ -1,7 +1,6 @@
 from keras import InputSpec, constraints, initializers, regularizers
 
 from kerox import activations, ops
-from kerox.core import KeroxTensor
 from kerox.layers import layer
 
 
