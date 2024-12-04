@@ -6,7 +6,7 @@ from kerox.core import KeroxTensor
 from kerox.layers.layer import Layer
 
 
-class KeroxInputLayer(klayers.InputLayer, Layer):
+class InputLayer(klayers.InputLayer, Layer):
     @wraps(klayers.InputLayer.__init__)
     def __init__(self, *args, **kwargs):
         import keras.src.layers.core.input_layer as _parent_module
@@ -70,4 +70,4 @@ def KeroxInput(*args, **kwargs) -> KeroxTensor:
     model = Model(x, y)
     ```
     """
-    return KeroxInputLayer(*args, **kwargs).output
+    return InputLayer(*args, **kwargs).output
