@@ -32,6 +32,7 @@ model.summary()
 model.compile(optimizer="adam", loss="mse")
 model.fit(x_train, y_train, epochs=10, batch_size=32)
 
+# Export to ONNX
 
 inference_outputs = model.onnx_symbolic_call(inputs, training=False)
 inference_model: onnx.ModelProto = spox.build(
@@ -57,6 +58,9 @@ sequential_model = models.KeroxSequential(
 model.summary()
 model.compile(optimizer="adam", loss="mse")
 model.fit(x_train, y_train, epochs=10, batch_size=32)
+
+# Export to ONNX
+
 inference_outputs = model.onnx_symbolic_call(inputs, training=False)
 inference_model: onnx.ModelProto = spox.build(
     inputs={"input": inputs.spox_var()},
@@ -87,6 +91,9 @@ class CustomModel(models.KeroxModel):
 model = CustomModel()
 model.compile(optimizer="adam", loss="mse")
 model.fit(x_train, y_train, epochs=10, batch_size=32)
+
+# Export to ONNX
+
 inference_outputs = model.onnx_symbolic_call(inputs, training=False)
 inference_model: onnx.ModelProto = spox.build(
     inputs={"input": inputs.spox_var()},
